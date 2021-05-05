@@ -24,7 +24,7 @@ myname = "Felix Fähnrich"
 EXPERIMENT_NAME = f"TaxifareModel_{myname}"
 
 class Trainer():
-    def __init__(self, X, y):
+    def __init__(self, X, y, model):
         """
             X: pandas DataFrame
             y: pandas Series
@@ -33,6 +33,7 @@ class Trainer():
         self.pipeline = None
         self.X = X
         self.y = y
+        self.model = model
 
     def set_pipeline(self):
         """defines the pipeline as a class attribute"""
@@ -45,11 +46,11 @@ class Trainer():
             ('time', pipe_time, time_col),
             ('distance', pipe_distance, dist_cols)
             ])
-        model = RandomForestRegressor()
-        self.mlflow_log_param('model', 'RandomForestRegressor')
+        name = str(self.model)
+        self.mlflow_log_param('model', name)
         self.pipeline = Pipeline([
             ('feat_eng', feat_eng_pipeline),
-            ('regressor', model)
+            ('regressor', self.model)
             ])
         return self.pipeline
 
