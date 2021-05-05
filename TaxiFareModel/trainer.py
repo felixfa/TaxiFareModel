@@ -16,6 +16,7 @@ from mlflow.tracking import MlflowClient
 
 import pandas as pd
 import mlflow
+import joblib
 
 
 MLFLOW_URI = "https://mlflow.lewagon.co/"
@@ -32,9 +33,6 @@ class Trainer():
         self.pipeline = None
         self.X = X
         self.y = y
-        self.mlflow_log_metric('rmse', 4.5)
-        self.mlflow_log_param('model', 'linear')
-
 
     def set_pipeline(self):
         """defines the pipeline as a class attribute"""
@@ -48,6 +46,7 @@ class Trainer():
             ('distance', pipe_distance, dist_cols)
             ])
         model = RandomForestRegressor()
+        self.mlflow_log_param('model', 'RandomForestRegressor')
         self.pipeline = Pipeline([
             ('feat_eng', feat_eng_pipeline),
             ('regressor', model)
@@ -64,7 +63,7 @@ class Trainer():
         """evaluates the pipeline on df_test and return the RMSE"""
         y_pred = self.pipeline.predict(X_test)
         eval_res = compute_rmse(y_pred,y_test)
-
+        self.mlflow_log_metric('rmse', eval_res)
         return eval_res
 
     @memoized_property
@@ -91,7 +90,7 @@ class Trainer():
 
     def save_model(self):
         """Save the model into a .joblib format"""
-
+        joblib.dump(self.pipeline, 'pipeline.joblib')
 
 
 if __name__ == "__main__":
@@ -100,13 +99,17 @@ if __name__ == "__main__":
     df = get_data(nrows=N)
     # clean data
     df = clean_data(df)
+    # Delete 1.January 2009
+    df = df[df['key'].str.contains("2009-01-01") == False]
     # set X and y
     y = df["fare_amount"]
     X = df.drop("fare_amount", axis=1)
     # hold out
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
     # train
     trainer = Trainer(X_train, y_train)
     trainer.run()
     # evaluate
     trainer.evaluate(X_test, y_test)
+    #save_model
+    trainer.save_model()

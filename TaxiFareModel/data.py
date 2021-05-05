@@ -5,7 +5,8 @@ AWS_BUCKET_PATH = "s3://wagon-public-datasets/taxi-fare-train.csv"
 
 def get_data(nrows=10_000):
     '''returns a DataFrame with nrows from s3 bucket'''
-    df = pd.read_csv(AWS_BUCKET_PATH, nrows=nrows)
+    df = pd.read_csv('../raw_data/train_1k.csv')
+    #df = pd.read_csv(AWS_BUCKET_PATH, nrows=nrows)
     return df
 
 
