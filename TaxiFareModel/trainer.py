@@ -1,4 +1,5 @@
 # imports
+from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -6,8 +7,10 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn import set_config; set_config(display='diagram')
 from TaxiFareModel.encoders import TimeFeaturesEncoder, DistanceTransformer
 from TaxiFareModel.utils import compute_rmse
+from TaxiFareModel.data import get_data, clean_data
 from memoized_property import memoized_property
 from mlflow.tracking import MlflowClient
 
@@ -86,12 +89,24 @@ class Trainer():
     def mlflow_log_metric(self, key, value):
         self.mlflow_client.log_metric(self.mlflow_run.info.run_id, key, value)
 
+    def save_model(self):
+        """Save the model into a .joblib format"""
+
+
 
 if __name__ == "__main__":
     # get data
+    N = 10_000
+    df = get_data(nrows=N)
     # clean data
+    df = clean_data(df)
     # set X and y
+    y = df["fare_amount"]
+    X = df.drop("fare_amount", axis=1)
     # hold out
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
     # train
+    trainer = Trainer(X_train, y_train)
+    trainer.run()
     # evaluate
-    print('TODO')
+    trainer.evaluate(X_test, y_test)
