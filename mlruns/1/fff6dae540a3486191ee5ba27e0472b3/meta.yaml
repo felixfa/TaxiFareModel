@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/Felix/code/felixfa/TaxiFareModel/mlruns/1/fff6dae540a3486191ee5ba27e0472b3/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: fff6dae540a3486191ee5ba27e0472b3
+run_uuid: fff6dae540a3486191ee5ba27e0472b3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1620283281949
+status: 1
+tags: []
+user_id: unknown

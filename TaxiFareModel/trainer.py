@@ -1,18 +1,18 @@
 # imports
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn import set_config; set_config(display='diagram')
-from TaxiFareModel.encoders import TimeFeaturesEncoder, DistanceTransformer
+from TaxiFareModel.encoders import TimeFeaturesEncoder, DistanceTransformer, DistanceFromCenter, CalculationDirection, MinkowskiDistance
 from TaxiFareModel.utils import compute_rmse
 from TaxiFareModel.data import get_data, clean_data
 from memoized_property import memoized_property
 from mlflow.tracking import MlflowClient
+from xgboost import XGBRegressor
+import sys
 
 import pandas as pd
 import mlflow
@@ -22,9 +22,11 @@ import joblib
 MLFLOW_URI = "https://mlflow.lewagon.co/"
 myname = "Felix Fähnrich"
 EXPERIMENT_NAME = f"TaxifareModel_{myname}"
+#EXPERIMENT_NAME = sys.argv[1]
+
 
 class Trainer():
-    def __init__(self, X, y, model):
+    def __init__(self, X, y, model, **kwargs):
         """
             X: pandas DataFrame
             y: pandas Series
@@ -34,19 +36,53 @@ class Trainer():
         self.X = X
         self.y = y
         self.model = model
+        self.dist_to_center = kwargs.get('dist_to_center',False)
+        self.calculation_direction = kwargs.get('calculation_direction',False)
+        self.calculation_direction = kwargs.get('calculation_direction',False)
+        self.manhattan_dist = kwargs.get('manhattan_dist',False)
+        self.euclidian_dist = kwargs.get('euclidian_dist',False)
 
     def set_pipeline(self):
         """defines the pipeline as a class attribute"""
+
+        #Feature Engineering
         pipe_time = make_pipeline(TimeFeaturesEncoder(time_column='pickup_datetime'), OneHotEncoder())
         pipe_distance = make_pipeline(DistanceTransformer(),StandardScaler())
-
+        pipe_distance_to_center = make_pipeline(DistanceFromCenter(),StandardScaler())
+        pipe_calculation_direction = make_pipeline(CalculationDirection(),StandardScaler())
+        pipe_manhattan_dist = make_pipeline(MinkowskiDistance(p=1),StandardScaler())
+        pipe_euclidian_dist = make_pipeline(MinkowskiDistance(p=2),StandardScaler())
         time_col = ['pickup_datetime']
         dist_cols = ['pickup_latitude', 'pickup_longitude', 'dropoff_latitude', 'dropoff_longitude']
-        feat_eng_pipeline = ColumnTransformer([
+        features = [
             ('time', pipe_time, time_col),
             ('distance', pipe_distance, dist_cols)
-            ])
-        name = str(self.model)
+            ]
+        if self.dist_to_center == True:
+            self.mlflow_log_param('feature1', 'distance_to_center')
+            features.append(
+                ('distance_to_center', pipe_distance_to_center, dist_cols)
+                )
+        if self.calculation_direction == True:
+            self.mlflow_log_param('feature2', 'calculation_direction')
+            features.append(
+                ('calculation_direction', pipe_calculation_direction, dist_cols)
+                )
+        if self.manhattan_dist == True:
+            self.mlflow_log_param('feature3', 'manhattan_dist')
+            features.append(
+                ('manhattan_dist', pipe_manhattan_dist, dist_cols)
+                )
+        if self.euclidian_dist == True:
+            self.mlflow_log_param('feature4', 'euclidian_dist')
+            features.append(
+                ('euclidian_dist', pipe_euclidian_dist, dist_cols)
+                )
+
+        feat_eng_pipeline = ColumnTransformer(features)
+
+        # Main Pipeline
+        name = str(self.model)[:10]
         self.mlflow_log_param('model', name)
         self.pipeline = Pipeline([
             ('feat_eng', feat_eng_pipeline),
@@ -57,6 +93,7 @@ class Trainer():
     def run(self):
         """set and train the pipeline"""
         self.pipeline = self.set_pipeline()
+        print(cross_val_score(self.pipeline, self.X, self.y, cv=5))
         self.pipeline.fit(self.X,self.y)
         return self.pipeline
 
@@ -106,7 +143,7 @@ if __name__ == "__main__":
     y = df["fare_amount"]
     X = df.drop("fare_amount", axis=1)
     # hold out
-    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.3)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.2)
     # train
     trainer = Trainer(X_train, y_train)
     trainer.run()
