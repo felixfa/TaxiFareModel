@@ -12,21 +12,24 @@ from TaxiFareModel.data import get_data, clean_data
 from memoized_property import memoized_property
 from mlflow.tracking import MlflowClient
 from xgboost import XGBRegressor
-import sys
+from catboost import CatBoostRegressor
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.linear_model import LinearRegression, LassoCV, RidgeCV
+from termcolor import colored
 
 import pandas as pd
 import mlflow
 import joblib
 
-
+ESTIMATOR = "Linear"
 MLFLOW_URI = "https://mlflow.lewagon.co/"
 myname = "Felix Fähnrich"
 EXPERIMENT_NAME = f"TaxifareModel_{myname}"
-#EXPERIMENT_NAME = sys.argv[1]
 
 
 class Trainer():
-    def __init__(self, X, y, model, **kwargs):
+    def __init__(self, X, y, estimator, **kwargs):
         """
             X: pandas DataFrame
             y: pandas Series
@@ -35,16 +38,50 @@ class Trainer():
         self.pipeline = None
         self.X = X
         self.y = y
-        self.model = model
+        self.estimator = estimator
+        self.model_params = None
+        self.kwargs = kwargs
         self.dist_to_center = kwargs.get('dist_to_center',False)
         self.calculation_direction = kwargs.get('calculation_direction',False)
         self.calculation_direction = kwargs.get('calculation_direction',False)
         self.manhattan_dist = kwargs.get('manhattan_dist',False)
         self.euclidian_dist = kwargs.get('euclidian_dist',False)
 
+    def get_estimator(self):
+        estimator = self.estimator
+        if estimator == "Lasso":
+            model = Lasso()
+        elif estimator == "Ridge":
+            model = Ridge()
+        elif estimator == "Linear":
+            model = LinearRegression()
+        elif estimator == "GBM":
+            model = GradientBoostingRegressor()
+        elif estimator == "RandomForest":
+            model = RandomForestRegressor()
+            self.model_params = {  # 'n_estimators': [int(x) for x in np.linspace(start = 50, stop = 200, num = 10)],
+                'max_features': ['auto', 'sqrt']}
+            # 'max_depth' : [int(x) for x in np.linspace(10, 110, num = 11)]}
+        elif estimator == "xgboost":
+            model = XGBRegressor(objective='reg:squarederror', n_jobs=-1, max_depth=10, learning_rate=0.05,
+                                 gamma=3)
+            self.model_params = {'max_depth': range(10, 20, 2),
+                                 'n_estimators': range(60, 220, 40),
+                                 'learning_rate': [0.1, 0.01, 0.05]
+                                 }
+        else:
+            model = Lasso()
+        estimator_params = self.kwargs.get("estimator_params", {})
+        self.mlflow_log_param("estimator", estimator)
+        model.set_params(**estimator_params)
+        print(colored(model.__class__.__name__, "red"))
+        return model
+
     def set_pipeline(self):
         """defines the pipeline as a class attribute"""
-
+        memory = self.kwargs.get("pipeline_memory", None)
+        if memory:
+            memory = mkdtemp()
         #Feature Engineering
         pipe_time = make_pipeline(TimeFeaturesEncoder(time_column='pickup_datetime'), OneHotEncoder())
         pipe_distance = make_pipeline(DistanceTransformer(),StandardScaler())
@@ -82,11 +119,10 @@ class Trainer():
         feat_eng_pipeline = ColumnTransformer(features)
 
         # Main Pipeline
-        name = str(self.model)[:10]
-        self.mlflow_log_param('model', name)
+        self.mlflow_log_param('student_name', 'Felix Fähnrich')
         self.pipeline = Pipeline([
             ('feat_eng', feat_eng_pipeline),
-            ('regressor', self.model)
+            ('regressor', self.get_estimator())
             ])
         return self.pipeline
 
@@ -133,7 +169,7 @@ class Trainer():
 
 if __name__ == "__main__":
     # get data
-    N = 10_000
+    N = 100_0000
     df = get_data(nrows=N)
     # clean data
     df = clean_data(df)
@@ -145,7 +181,14 @@ if __name__ == "__main__":
     # hold out
     X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.2)
     # train
-    trainer = Trainer(X_train, y_train)
+    model=CatBoostRegressor(verbose=False)
+    print(model)
+    trainer = Trainer(X_train, y_train, model,
+        dist_to_center=True,
+        calculation_direction=True,
+        manhattan_dist=True,
+        euclidian_dist=True
+        )
     trainer.run()
     # evaluate
     trainer.evaluate(X_test, y_test)
