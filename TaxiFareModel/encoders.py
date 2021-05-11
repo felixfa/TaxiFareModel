@@ -111,13 +111,12 @@ class MinkowskiDistance(BaseEstimator, TransformerMixin):
         self.end_lat = end_lat
         self.end_lon = end_lon
 
-
-
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y=None):
-        """Returns a copy of the DataFrame X with only one column: 'distance_to_center'"""
+        """Returns a copy of the DataFrame X with only one column: 'Minkowski_Distance'"""
+
         X_copy = X.copy()
         X_copy[[f'MinkowskiDistance_{self.p}']] = minkowski_distance_gps(X_copy[self.start_lon], X_copy[self.end_lon],
                                        X_copy[self.start_lat], X_copy[self.end_lat], self.p)

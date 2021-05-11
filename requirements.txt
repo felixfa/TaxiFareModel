@@ -1,13 +1,15 @@
 # packaging
-pip>=9
+pip==21.1.1
 setuptools>=26
 twine
 wheel>=0.29
 
 # data science
-numpy
-pandas
-scikit-learn
+numpy==1.18.5
+pandas==1.2.0
+scikit-learn==0.22
+catboost
+xgboost>=0.83
 
 # tests/linter
 black
@@ -27,3 +29,7 @@ six>=1.14
 joblib
 memoized-property
 termcolor
+pytest
+python-gitlab
+httplib2>=0.15.0
+urllib3==1.25.4

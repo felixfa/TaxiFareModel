@@ -1,22 +1,24 @@
-# imports
+                                                                     # imports
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn import set_config; set_config(display='diagram')
+#from sklearn import set_config; set_config(display='diagram')
 from TaxiFareModel.encoders import TimeFeaturesEncoder, DistanceTransformer, DistanceFromCenter, CalculationDirection, MinkowskiDistance
 from TaxiFareModel.utils import compute_rmse
 from TaxiFareModel.data import get_data, clean_data
+from TaxiFareModel.params import STORAGE_LOCATION, BUCKET_NAME
 from memoized_property import memoized_property
 from mlflow.tracking import MlflowClient
 from xgboost import XGBRegressor
 from catboost import CatBoostRegressor
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.linear_model import LinearRegression, LassoCV, RidgeCV
+from sklearn.linear_model import LinearRegression, LassoCV, RidgeCV, Lasso
 from termcolor import colored
+from google.cloud import storage
 
 import pandas as pd
 import mlflow
@@ -49,7 +51,9 @@ class Trainer():
 
     def get_estimator(self):
         estimator = self.estimator
-        if estimator == "Lasso":
+        if estimator == 'CatBoost':
+            model = CatBoostRegressor(verbose=False)
+        elif estimator == "Lasso":
             model = Lasso()
         elif estimator == "Ridge":
             model = Ridge()
@@ -64,7 +68,8 @@ class Trainer():
             # 'max_depth' : [int(x) for x in np.linspace(10, 110, num = 11)]}
         elif estimator == "xgboost":
             model = XGBRegressor(objective='reg:squarederror', n_jobs=-1, max_depth=10, learning_rate=0.05,
-                                 gamma=3)
+                                 gamma=3
+                                 )
             self.model_params = {'max_depth': range(10, 20, 2),
                                  'n_estimators': range(60, 220, 40),
                                  'learning_rate': [0.1, 0.01, 0.05]
@@ -73,6 +78,7 @@ class Trainer():
             model = Lasso()
         estimator_params = self.kwargs.get("estimator_params", {})
         self.mlflow_log_param("estimator", estimator)
+        self.mlflow_log_param('N', N)
         model.set_params(**estimator_params)
         print(colored(model.__class__.__name__, "red"))
         return model
@@ -164,12 +170,20 @@ class Trainer():
 
     def save_model(self):
         """Save the model into a .joblib format"""
-        joblib.dump(self.pipeline, 'pipeline.joblib')
+        print("saved model.joblib locally")
+        joblib.dump(self.pipeline, 'model_'+ self.estimator + str(N) + '.joblib')
+
+         # Implement here
+        print(f"uploaded pipeline.joblib to gcp cloud storage under \n => {STORAGE_LOCATION}")
+        client = storage.Client()
+        bucket = client.get_bucket(BUCKET_NAME)
+        blob = bucket.blob(STORAGE_LOCATION + '/model_' + self.estimator  + '.joblib' )
+        blob.upload_from_filename('model_'+ self.estimator + str(N) + '.joblib')
 
 
 if __name__ == "__main__":
     # get data
-    N = 100_0000
+    N = 500_000
     df = get_data(nrows=N)
     # clean data
     df = clean_data(df)
@@ -181,8 +195,7 @@ if __name__ == "__main__":
     # hold out
     X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.2)
     # train
-    model=CatBoostRegressor(verbose=False)
-    print(model)
+    model = 'xgboost'
     trainer = Trainer(X_train, y_train, model,
         dist_to_center=True,
         calculation_direction=True,
