@@ -123,7 +123,7 @@ pypi:
 run_locally:
 	@python -m ${PACKAGE_NAME}.${FILENAME}
 
-gcp_submit_training:
+gcp:
 	gcloud ai-platform jobs submit training ${JOB_NAME} \
 		--job-dir gs://${BUCKET_NAME}/${BUCKET_TRAINING_FOLDER} \
 		--package-path ${PACKAGE_NAME} \

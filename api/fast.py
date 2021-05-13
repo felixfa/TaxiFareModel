@@ -20,7 +20,7 @@ app.add_middleware(
 
 @app.get("/")
 def index():
-    return {"greeting": "Hello world Felix"}
+    return {"greeting": "Hello world Felix!!!!!!"}
 
 @app.get("/predict_fare")
 def index(pickup_datetime,
@@ -35,12 +35,12 @@ def index(pickup_datetime,
   "dropoff_latitude": dropoff_latitude,
   "passenger_count": passenger_count}
 
-    client = storage.Client().bucket(BUCKET_NAME)
-    blob = client.blob(STORAGE_LOCATION + "/model_xgboost.joblib")
-    blob.download_to_filename("model_xgboost.joblib")
-    print("=> pipeline downloaded from storage")
-    loaded_model = joblib.load("model_xgboost.joblib")
-    #loaded_model = joblib.load('/Users/Felix/code/felixfa/TaxiFareModel/model_xgboost.joblib')
+    #client = storage.Client().bucket(BUCKET_NAME)
+    #blob = client.blob(STORAGE_LOCATION + "/model_xgboost.joblib")
+    #blob.download_to_filename("model_xgboost.joblib")
+    #print("=> pipeline downloaded from storage")
+    #loaded_model = joblib.load("model_xgboost.joblib")
+    loaded_model = joblib.load('TaxiFareModel/model_xgboost.joblib')
     X_pred = pd.DataFrame({k: [v] for k, v in array.items()})
     X_pred.iloc[:,2:6] = X_pred.iloc[:,2:6].astype('float64')
     X_pred.iloc[:,6] = X_pred.iloc[:,6].astype('int64')

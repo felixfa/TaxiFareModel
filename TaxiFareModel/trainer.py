@@ -171,19 +171,19 @@ class Trainer():
     def save_model(self):
         """Save the model into a .joblib format"""
         print("saved model.joblib locally")
-        joblib.dump(self.pipeline, 'model_'+ self.estimator + str(N) + '.joblib')
+        joblib.dump(self.pipeline, 'model.joblib')
 
          # Implement here
         print(f"uploaded pipeline.joblib to gcp cloud storage under \n => {STORAGE_LOCATION}")
         client = storage.Client()
         bucket = client.get_bucket(BUCKET_NAME)
-        blob = bucket.blob(STORAGE_LOCATION + '/model_' + self.estimator  + '.joblib' )
-        blob.upload_from_filename('model_'+ self.estimator + str(N) + '.joblib')
+        blob = bucket.blob(STORAGE_LOCATION + '/model_' + self.estimator  + str(N) + '.joblib' )
+        blob.upload_from_filename('model.joblib')
 
 
 if __name__ == "__main__":
     # get data
-    N = 500_000
+    N = 200_000
     df = get_data(nrows=N)
     # clean data
     df = clean_data(df)
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     # hold out
     X_train, X_test, y_train, y_test = train_test_split(X, y,random_state=42, test_size=0.2)
     # train
-    model = 'xgboost'
+    model = 'RandomForest'
     trainer = Trainer(X_train, y_train, model,
         dist_to_center=True,
         calculation_direction=True,

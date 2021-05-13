@@ -8,7 +8,6 @@ wheel>=0.29
 numpy==1.18.5
 pandas==1.2.0
 scikit-learn==0.22
-catboost
 xgboost>=0.83
 
 # tests/linter
@@ -20,7 +19,7 @@ yapf
 
 # API
 gcsfs
-google-cloud-storage
+google-cloud-storage==1.38.0
 mlflow
 s3fs
 
@@ -33,3 +32,5 @@ pytest
 python-gitlab
 httplib2>=0.15.0
 urllib3==1.25.4
+uvicorn==0.13.4
+fastapi==0.65.0
